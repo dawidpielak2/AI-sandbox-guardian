@@ -30,7 +30,7 @@ def solve_with_retry(task, max_retries=3):
         full_prompt = f"{system_instruction}\n\nTask: {task}\n{current_context}"
         
         try:
-            response = ollama.generate(model='llama3', prompt=full_prompt)
+            response = ollama.generate(model='llama3.1', prompt=full_prompt)
             
             # Sanitize LLM output from markdown artifacts
             clean_code = response['response'].strip().replace("```python", "").replace("```", "").strip()
