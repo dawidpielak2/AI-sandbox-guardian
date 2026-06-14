@@ -8,7 +8,7 @@ This project implements the **Synthesizer (Reporter) Pattern**. Instead of retur
 ## 2. Core Architecture & Workflow
 The system is built on a modular, multi-agent architecture:
 
-1. **Orchestrator (`main.py`):** The entry point that initializes logging and receives the user query.
+1. **Orchestrator (`main.py`):** The entry point that initializes logging and receives the user query via CLI arguments.
 2. **Router Agent (`router.py`):** The dispatcher. It analyzes the user's intent and decides if the task requires writing code or just a text response.
 3. **Code Agent (`code_agent.py`):** The engineer. It generates Python code and operates within an autonomous **Self-Healing Loop** (automatically fixing syntax or runtime errors).
 4. **Broker (`broker.py`):** The sandbox guardian. It provisions an ephemeral Docker container to execute the payload securely.
@@ -19,4 +19,40 @@ The execution environment enforces strict security boundaries to protect the hos
 
 * **Privilege Separation:** Runs code under a dedicated, low-privilege `sandboxuser` within a minimalist Alpine base.
 * **Air-Gapping (Network Isolation):** Network access is entirely disabled (`network_disabled=True`) to prevent data exfiltration.
-* **Resource Quotas:** Memory allocation is hard-capped (64MB) to prevent resource exhaustion and
+* **Resource Quotas:** Memory allocation is hard-capped (64MB) to prevent resource exhaustion and trigger OOM kills.
+* **DoS Mitigation (Timeouts):** Enforces strict time limits (5 seconds) using asynchronous container monitoring, terminating infinite loops with a `SIGKILL` signal.
+* **Ephemerality:** Containers are forcefully removed (`force=True`) immediately after execution.
+
+## 4. Tech Stack
+* **Orchestration:** Python 3, Docker SDK
+* **Containerization:** Docker (Alpine Linux base)
+* **AI Engine:** Ollama (Local **Llama 3.1** model)
+
+---
+
+## 5. Quickstart & Usage
+
+**Prerequisites:**
+* Docker Desktop (with WSL 2 integration enabled)
+* Python 3.10+
+* Ollama running locally
+
+**Setup & Execution:**
+
+```bash
+# 1. Clone the repository
+git clone [https://github.com/YOUR_USERNAME/ai-sandbox-guardian.git](https://github.com/YOUR_USERNAME/ai-sandbox-guardian.git)
+cd ai-sandbox-guardian
+
+# 2. Build the secure sandbox image
+docker build -t ai-sandbox-image .
+
+# 3. Install required Python packages
+pip install docker requests ollama
+
+# 4. Start the local LLM server (in a separate terminal)
+ollama serve
+ollama pull llama3.1
+
+# 5. Run the Orchestrator with your prompt
+python3 main.py "Calculate the first 10 numbers of the Fibonacci sequence and state whether they are even or odd."

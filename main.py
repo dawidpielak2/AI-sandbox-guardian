@@ -1,6 +1,9 @@
 import logging
+import argparse
+import sys
 from router import orchestrator
 
+# Global logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -8,21 +11,32 @@ logging.basicConfig(
 )
 
 if __name__ == "__main__":
+    # Setup CLI argument parser
+    parser = argparse.ArgumentParser(description="AI Sandbox Guardian - Multi-Agent Orchestrator")
+    parser.add_argument(
+        "query", 
+        type=str, 
+        nargs="?", 
+        help="The task or question you want to send to the AI"
+    )
+    
+    args = parser.parse_args()
+
     print("\n=== AI Orchestrator Guardian (Synthesizer Version) ===\n")
+
+    # Check if the user provided a query
+    if not args.query:
+        print("Error: No query provided.")
+        print('Usage example: python3 main.py "Calculate the first 10 numbers of the Fibonacci sequence"')
+        sys.exit(1)
+        
+    task = args.query
     
-    tasks = [
-        # This task should trigger code execution and reporter analysis
-        "Calculate the first 10 numbers of the Fibonacci sequence and state whether they are even or odd.",
-        
-        # This task should be routed directly to the reporter as text
-        "In two sentences, briefly explain what the Python programming language is."
-    ]
+    print("--- PROCESSING TASK ---")
+    print(f"User Request: {task}\n")
     
-    for i, task in enumerate(tasks, 1):
-        print(f"\n--- TESTING TASK {i} ---")
-        print(f"User Request: {task}\n")
-        
-        final_output = orchestrator(task)
-        
-        print(f"\n[FINAL REPORT]:\n{final_output}\n")
-        print("-" * 50)
+    # Run the orchestrator with the provided CLI argument
+    final_output = orchestrator(task)
+    
+    print(f"\n[FINAL REPORT]:\n{final_output}\n")
+    print("-" * 50)
