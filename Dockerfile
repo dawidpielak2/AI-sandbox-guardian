@@ -5,3 +5,4 @@ WORKDIR /home/sandboxuser
 USER sandboxuser
 
 ENTRYPOINT ["python", "-c"]
+
