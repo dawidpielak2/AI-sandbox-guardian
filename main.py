@@ -1,6 +1,8 @@
 import logging
 import sys
 from router import orchestrator
+from config import MAX_HISTORY_LENGTH
+from file_manager import QUARANTINE_DIR, process_uploaded_file
 
 # Global logging configuration
 logging.basicConfig(
@@ -9,21 +11,18 @@ logging.basicConfig(
     handlers=[logging.FileHandler("security_audit.log")]
 )
 
-# Limit for conversation history to prevent context window overflow
-MAX_HISTORY_LENGTH = 10
-
 if __name__ == "__main__":
-    print("\n=== AI Orchestrator Guardian (Interactive Chat Mode) ===")
-    print("Type 'exit' or 'quit' or press 'Ctrl + C' to end the session.\n")
+    print("\n=== AI Orchestrator Guardian ===")
+    print("Type 'exit' or 'quit' to end the session.")
+    print("Use '/load <absolute_path>' to mount a text file into the sandbox.\n")
 
-    # Short-term memory for the AI model
     chat_history = []
+    current_file = None
 
     while True:
         try:
             user_input = input("[You]: ").strip()
             
-            # Exit mechanism
             if user_input.lower() in ['exit', 'quit']:
                 print("\nShutting down Guardian. Goodbye!")
                 break
@@ -31,24 +30,47 @@ if __name__ == "__main__":
             if not user_input:
                 continue
                 
-            # Append user message to history
+            # Handle the /load command using the file_manager
+            if user_input.startswith("/load "):
+                filepath = user_input[6:].strip()
+                
+                file_data = process_uploaded_file(filepath)
+                
+                if file_data["error"]:
+                    print(f"[Guardian Error]: {file_data['error']}")
+                    continue
+                    
+                # Store the current file details
+                current_file = {
+                    'name': file_data['name'], 
+                    'path': file_data['path'], 
+                    'size': file_data['size']
+                }
+                
+                system_msg = (
+                    f"System Note: The file '{file_data['name']}' is securely mounted at '/mnt/sandbox_data/{file_data['name']}'. "
+                    f"Size category: {file_data['size_label']}. "
+                    f"Content preview:\n{file_data['preview']}"
+                )
+                chat_history.append({"role": "system", "content": system_msg})
+                print(f"[Guardian]: File '{file_data['name']}' safely loaded. Status: {file_data['size_label']}.")
+                continue
+
             chat_history.append({"role": "user", "content": user_input})
             
-            # Enforce sliding window to manage memory usage
+            # Keep the history within the configured limit
             if len(chat_history) > MAX_HISTORY_LENGTH:
                 chat_history = chat_history[-MAX_HISTORY_LENGTH:]
 
-            print("--- Thinking... ---")
+            print("--- Processing ---")
             
-            # Pass the conversation history to the routing layer
-            final_output = orchestrator(chat_history)
+            final_output = orchestrator(chat_history, QUARANTINE_DIR, current_file)
             
-            print(f"\n[Guardian]:\n{final_output}\n")
+            print(f"\n[FINAL REPORT]:\n{final_output}\n")
             print("-" * 50)
             
-            # Append AI response to history for context in future queries
             chat_history.append({"role": "assistant", "content": final_output})
 
         except KeyboardInterrupt:
             print("\nShutting down Guardian. Goodbye!")
-            sys.exit(0)
+            break
