@@ -1,5 +1,4 @@
 import logging
-import argparse
 import sys
 from router import orchestrator
 
@@ -7,36 +6,49 @@ from router import orchestrator
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.FileHandler("security_audit.log"), logging.StreamHandler()]
+    handlers=[logging.FileHandler("security_audit.log")]
 )
 
+# Limit for conversation history to prevent context window overflow
+MAX_HISTORY_LENGTH = 10
+
 if __name__ == "__main__":
-    # Setup CLI argument parser
-    parser = argparse.ArgumentParser(description="AI Sandbox Guardian - Multi-Agent Orchestrator")
-    parser.add_argument(
-        "query", 
-        type=str, 
-        nargs="?", 
-        help="The task or question you want to send to the AI"
-    )
-    
-    args = parser.parse_args()
+    print("\n=== AI Orchestrator Guardian (Interactive Chat Mode) ===")
+    print("Type 'exit' or 'quit' or press 'Ctrl + C' to end the session.\n")
 
-    print("\n=== AI Orchestrator Guardian (Synthesizer Version) ===\n")
+    # Short-term memory for the AI model
+    chat_history = []
 
-    # Check if the user provided a query
-    if not args.query:
-        print("Error: No query provided.")
-        print('Usage example: python3 main.py "Calculate the first 10 numbers of the Fibonacci sequence"')
-        sys.exit(1)
-        
-    task = args.query
-    
-    print("--- PROCESSING TASK ---")
-    print(f"User Request: {task}\n")
-    
-    # Run the orchestrator with the provided CLI argument
-    final_output = orchestrator(task)
-    
-    print(f"\n[FINAL REPORT]:\n{final_output}\n")
-    print("-" * 50)
+    while True:
+        try:
+            user_input = input("[You]: ").strip()
+            
+            # Exit mechanism
+            if user_input.lower() in ['exit', 'quit']:
+                print("\nShutting down Guardian. Goodbye!")
+                break
+            
+            if not user_input:
+                continue
+                
+            # Append user message to history
+            chat_history.append({"role": "user", "content": user_input})
+            
+            # Enforce sliding window to manage memory usage
+            if len(chat_history) > MAX_HISTORY_LENGTH:
+                chat_history = chat_history[-MAX_HISTORY_LENGTH:]
+
+            print("--- Thinking... ---")
+            
+            # Pass the conversation history to the routing layer
+            final_output = orchestrator(chat_history)
+            
+            print(f"\n[Guardian]:\n{final_output}\n")
+            print("-" * 50)
+            
+            # Append AI response to history for context in future queries
+            chat_history.append({"role": "assistant", "content": final_output})
+
+        except KeyboardInterrupt:
+            print("\nShutting down Guardian. Goodbye!")
+            sys.exit(0)

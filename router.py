@@ -5,17 +5,20 @@ from reporter import synthesize
 
 logger = logging.getLogger("AgenticSandbox")
 
-def orchestrator(task):
-    """Determines the path: Code Generation -> Synthesizer OR Direct to Synthesizer."""
-    logger.info(f"Orchestrator analyzing task: {task}")
+def orchestrator(chat_history):
+    """Determines the execution path based on the latest user request."""
     
-    # Restrictive binary prompt (Only the word CODE or TEXT)
+    # Isolate the latest task for intent classification
+    latest_task = chat_history[-1]['content']
+    logger.info(f"Orchestrator analyzing new task: {latest_task}")
+    
+    # Binary prompt for routing decisions
     router_prompt = (
         "You are an AI router. Read the user's task and determine if it requires "
         "writing and executing Python code to calculate math, process data, or perform an action. "
         "Reply EXACTLY with the word 'CODE' if programming is needed. "
         "Reply EXACTLY with the word 'TEXT' if it is a general question, definition, or translation.\n\n"
-        f"Task: {task}"
+        f"Task: {latest_task}"
     )
     
     try:
@@ -25,16 +28,13 @@ def orchestrator(task):
         logger.info(f"Orchestrator Decision: {decision}")
         
         if "CODE" in decision:
-            logger.info("Routing: Task -> Code Agent -> Broker -> Reporter")
-            # 1. Get raw output from the executed script
-            raw_execution_output = solve_with_retry(task)
-            # 2. Pass raw output to the Reporter for a readable explanation
-            return synthesize(task, raw_output=raw_execution_output, used_code=True)
+            logger.info("Routing: Task -> Code -> Broker -> Reporter")
+            raw_execution_output = solve_with_retry(chat_history)
+            return synthesize(chat_history, raw_output=raw_execution_output, used_code=True)
             
         else:
             logger.info("Routing: Task -> Reporter (Direct Text)")
-            # 1. Question doesn't require code, pass directly to Reporter
-            return synthesize(task, raw_output=None, used_code=False)
+            return synthesize(chat_history, raw_output=None, used_code=False)
             
     except Exception as e:
         logger.error(f"Router error: {str(e)}")

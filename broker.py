@@ -21,9 +21,8 @@ def run_code_safely(user_code, timeout_seconds=5):
             output = container.logs().decode('utf-8').strip()
             return output
         except requests.exceptions.ReadTimeout:
-            # DOS protection
             container.kill()
-            return "Security Constraint Violated: Execution Timeout (DoS Prevention)"
+            return "Security Constraint Violated: Execution Timeout"
         finally:
             container.remove(force=True)
             
